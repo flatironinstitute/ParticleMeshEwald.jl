@@ -27,11 +27,10 @@ end
     i, j, r = neighbor_list[idx]
     @inbounds @fastmath qi, qj = q[i].re, q[j].re
     @inbounds @fastmath t = qi * qj * erfc(alpha * r) / r
-    Atomix.@atomic output[1] += t
+    @inbounds output[Threads.threadid() - 1] += t
 end
 
 function energy_short(pme::PME, x::Vector{T}, y::Vector{T}, z::Vector{T}, q::Vector{Complex{T}}; backend = CPU()) where T
-    Es = [zero(T)]
 
     @fastmath @inbounds for i in 1:pme.N
         pme.pos[1, i] = x[i]
@@ -42,16 +41,18 @@ function energy_short(pme::PME, x::Vector{T}, y::Vector{T}, z::Vector{T}, q::Vec
     update!(pme.celllist, pme.pos)
     nb = neighborlist!(pme.celllist)
 
-    kernel = energy_short_kernel!(backend)
-    kernel(pme.alpha, nb, q, Es, ndrange = size(nb, 1))
+    Es_thread = zeros(T, Threads.nthreads())
+    kernel = energy_short_kernel!(backend, Threads.nthreads(), size(nb, 1))
+    kernel(pme.alpha, nb, q, Es_thread, ndrange = size(nb, 1))
     KernelAbstractions.synchronize(backend)
 
+    Es = sum(Es_thread)
     t = pme.alpha / sqrt(π)
     for i in 1:pme.N
-        Es[1] -= q[i].re^2 * t
+        Es -= q[i].re^2 * t
     end
 
-    return Es[1] / 4π
+    return Es / 4π
 end
 
 function energy(pme::PME, x::Vector{T}, y::Vector{T}, z::Vector{T}, q::Vector{Complex{T}}; backend = CPU()) where T

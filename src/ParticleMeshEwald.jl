@@ -1,9 +1,9 @@
 module ParticleMeshEwald
 
-using SpecialFunctions, LoopVectorization, LinearAlgebra, StaticArrays
+using SpecialFunctions, LoopVectorization, LinearAlgebra
 using CellListMap
 using FINUFFT
-using KernelAbstractions, Atomix
+using KernelAbstractions
 include(joinpath(dirname(pathof(KernelAbstractions)), "../examples/utils.jl"))
 
 export PME

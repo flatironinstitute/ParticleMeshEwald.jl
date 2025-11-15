@@ -19,16 +19,15 @@ end
 
 function main()
     rho = 1.0
-
-    df = CSV.write(joinpath(@__DIR__, "pme_benchmark.csv"), DataFrame(n = Int[], s = Float64[], t_short = Float64[], t_long = Float64[], t_total = Float64[]))
-
     ns = Int.(ceil.(10.0 .^ range(3, 7, length = 30)))
-    alpha = 1.0
-    for s in 3.0:1.0:5.0
+
+    sa = [(2, 1.5)]
+    for (s, alpha) in sa
+        df = CSV.write(joinpath(@__DIR__, "pme_benchmark_s$(s).csv"), DataFrame(n = Int[], s = Float64[], alpha = Float64[], t_short = Float64[], t_long = Float64[], t_total = Float64[]))
         for n in ns
             L = (n / rho) ^ (1/3)
-            t_short, t_long, t_total = benchmark_pme(n, L, alpha, s)
-            CSV.write(df, DataFrame(n = n, s = s, t_short = t_short, t_long = t_long, t_total = t_total), append = true)
+            t_short, t_long, t_total = benchmark_pme(n, L, alpha, Float64(s))
+            CSV.write(df, DataFrame(n = n, s = Float64(s), alpha = Float64(alpha), t_short = t_short, t_long = t_long, t_total = t_total), append = true)
         end
     end
 end
