@@ -1,13 +1,36 @@
 name = "ParticleMeshEwald"
 uuid = "cd47a632-4c33-49da-880f-bcc568aa1a40"
-authors = ["Xuanzhao Gao <xgao@flatironinstitute.org> and contributors"]
 version = "1.0.0-DEV"
+authors = ["Xuanzhao Gao <xgao@flatironinstitute.org> and contributors"]
+
+[deps]
+Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
+CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
+FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[weakdeps]
+EwaldSummations = "329efeb5-5dc7-45f3-8303-d0bcfeef1c8a"
+ExTinyMD = "fec76197-d59f-46dd-a0ed-76a83c21f7aa"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
-julia = "1.6.7"
+Atomix = "1.1.2"
+CellListMap = "0.9.14"
+FINUFFT = "3.4.2"
+KernelAbstractions = "0.9.39"
+LinearAlgebra = "1.12.0"
+LoopVectorization = "0.12.173"
+SpecialFunctions = "2.6.1"
+StaticArrays = "1.9.15"
+julia = "1.10, 1.11, 1.12"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "EwaldSummations", "Random", "ExTinyMD"]
