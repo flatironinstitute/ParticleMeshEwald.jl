@@ -30,6 +30,17 @@ end
     @inbounds output[Threads.threadid() - 1] += t
 end
 
+function energy_short_single(alpha::T, neighbor_list, q::Vector{Complex{T}}) where T
+    Es = zero(T)
+    for i in 1:length(neighbor_list)
+        i, j, r = neighbor_list[i]
+        @inbounds @fastmath qi, qj = q[i].re, q[j].re
+        @inbounds @fastmath t = qi * qj * erfc(alpha * r) / r
+        Es += t
+    end
+    return Es
+end
+
 function energy_short(pme::PME, x::Vector{T}, y::Vector{T}, z::Vector{T}, q::Vector{Complex{T}}; backend = CPU()) where T
 
     @fastmath @inbounds for i in 1:pme.N
@@ -41,12 +52,17 @@ function energy_short(pme::PME, x::Vector{T}, y::Vector{T}, z::Vector{T}, q::Vec
     update!(pme.celllist, pme.pos)
     nb = neighborlist!(pme.celllist)
 
-    Es_thread = zeros(T, Threads.nthreads())
-    kernel = energy_short_kernel!(backend, Threads.nthreads(), size(nb, 1))
-    kernel(pme.alpha, nb, q, Es_thread, ndrange = size(nb, 1))
-    KernelAbstractions.synchronize(backend)
-
-    Es = sum(Es_thread)
+    Es = zero(T)
+    if Threads.nthreads() == 1
+        Es = energy_short_single(pme.alpha, nb, q)
+    else
+        Es_thread = zeros(T, Threads.nthreads())
+        kernel = energy_short_kernel!(backend, Threads.nthreads(), size(nb, 1))
+        kernel(pme.alpha, nb, q, Es_thread, ndrange = size(nb, 1))
+        KernelAbstractions.synchronize(backend)
+        Es = sum(Es_thread)
+    end
+    
     t = pme.alpha / sqrt(π)
     for i in 1:pme.N
         Es -= q[i].re^2 * t
