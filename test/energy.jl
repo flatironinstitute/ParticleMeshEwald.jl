@@ -48,6 +48,60 @@
     @test norm(rho_n .- rho_direct) < 1e-7
 end
 
+@testset "multi-threaded short-range path agrees with a single-threaded reference (Task 3)" begin
+    # This must run with more than one thread to exercise the multi-threaded
+    # accumulation path in energy_short at all -- and, per the finding recorded
+    # below, with the *interactive* thread pool forced to 0 (`--threads=4,0`), not
+    # just `--threads=4`. Julia 1.9+ splits threads into an `:interactive` pool
+    # (1 thread by default, containing the main thread) and a `:default` pool;
+    # `Threads.@threads`/KernelAbstractions' CPU backend schedule onto `:default`
+    # only, so with the *default* pool split, Threads.threadid() for those tasks
+    # happens to range over 2:nthreads()+1 on this Julia version, and the bug
+    # under test (`output[Threads.threadid() - 1]`) accidentally lands in-bounds
+    # (indices 1:nthreads()) and is invisible. Forcing 0 interactive threads
+    # (`--threads=4,0`) puts thread id 1 back into the pool that
+    # `Threads.@threads` schedules onto, which is what makes index 0 actually
+    # occur -- confirmed by hand: `--threads=4` alone did not reproduce the bug on
+    # this machine; `--threads=4,0` did (silently -- see below).
+    #
+    # The out-of-bounds write is inside `@inbounds`, so it is not a BoundsError:
+    # it is a silent undefined-behavior write to `output[0]`, which produced a
+    # wrong (not obviously wrong, not crashing) energy value when this was
+    # checked by hand against an independent reference. That is worse than a
+    # crash, and is the reason Task 3 replaces `Threads.threadid()`-keyed
+    # accumulation with a partition keyed by loop index instead.
+    script = """
+    using ParticleMeshEwald, Random, CellListMap, SpecialFunctions
+    @assert Threads.nthreads() > 1 "run with --threads=4,0 (or similar with 0 interactive threads)"
+
+    Random.seed!(123)
+    n = 300
+    L = (20.0, 20.0, 20.0)
+    poses = [(rand() * L[1], rand() * L[2], rand() * L[3]) for _ in 1:n]
+    charges = [isodd(i) ? 1.0 : -1.0 for i in 1:n]
+    pme = ParticleMeshEwald.PME(0.5, L, 4.0, n)   # r_c = s/α = 8.0 < min(L)/2 = 10.0
+
+    E_pkg = ParticleMeshEwald.energy_short(pme, poses, charges)
+
+    # Independent reference: same neighbor list (via CellListMap directly, not
+    # through pme's internals), plain serial summation.
+    pos = zeros(Float64, 3, n)
+    for i in 1:n
+        pos[1, i] = poses[i][1]; pos[2, i] = poses[i][2]; pos[3, i] = poses[i][3]
+    end
+    cl = CellListMap.InPlaceNeighborList(xpositions = pos, cutoff = pme.r_c, unitcell = [L[1], L[2], L[3]], parallel = false)
+    nb = CellListMap.neighborlist!(cl)
+    E_ref = sum(charges[i] * charges[j] * erfc(pme.alpha * r) / r for (i, j, r) in nb)
+    E_ref -= sum(charges .^ 2) * pme.alpha / sqrt(pi)
+    E_ref /= 4pi
+
+    @assert isapprox(E_pkg, E_ref; atol = 1e-10) "E_pkg=\$E_pkg E_ref=\$E_ref"
+    print("OK")
+    """
+    out = read(`$(Base.julia_cmd()) --startup-file=no --threads=4,0 --project=$(Base.active_project()) -e $script`, String)
+    @test out == "OK"
+end
+
 @testset "AoS query API" begin
     Random.seed!(2026)
     n = 100

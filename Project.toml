@@ -6,7 +6,6 @@ authors = ["Xuanzhao Gao <xgao@flatironinstitute.org>"]
 [deps]
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
-KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 SIMD = "fdea26ae-647d-5447-a871-4b548cad5224"
@@ -20,7 +19,6 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 [compat]
 CellListMap = "0.10"
 FINUFFT = "3.4.2"
-KernelAbstractions = "0.9.39"
 LinearAlgebra = "1"
 LoopVectorization = "0.12.173"
 SIMD = "3.7.2"

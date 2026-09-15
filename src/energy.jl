@@ -63,14 +63,6 @@ function _scatter_pos!(pme::PME{T}, poses) where T
     return pme.pos
 end
 
-@kernel function energy_short_kernel!(@Const(alpha), @Const(neighbor_list), @Const(charges), output)
-    idx = @index(Global)
-    i, j, r = neighbor_list[idx]
-    @inbounds @fastmath qi, qj = charges[i], charges[j]
-    @inbounds @fastmath t = qi * qj * erfc(alpha * r) / r
-    @inbounds output[Threads.threadid() - 1] += t
-end
-
 function energy_short_single(alpha::T, neighbor_list, charges) where T
     Es = zero(T)
     for k in 1:length(neighbor_list)
@@ -82,8 +74,39 @@ function energy_short_single(alpha::T, neighbor_list, charges) where T
     return Es
 end
 
+# Task-partitioned reduction: the neighbour list is split into
+# `Threads.nthreads()` contiguous chunks, and each task accumulates into the
+# slot given by its OWN LOOP INDEX (`t`, 1:nthreads()), never by
+# `Threads.threadid()`. A previous version keyed the per-task accumulator by
+# `Threads.threadid() - 1`, which is unsound for two reasons: (1) it is not a
+# safe key under Julia's task-migration scheduler regardless of its value, and
+# (2) inside `@inbounds`, `threadid() == 1` (index 0) is not a BoundsError but
+# a silent out-of-bounds write -- confirmed by hand to produce a wrong energy
+# value (not a crash) when Julia's `:interactive` thread pool is sized 0, so
+# thread 1 participates in `Threads.@threads` scheduling. Keying by the static
+# loop-partition index `t` sidesteps both problems: each of the `nthreads()`
+# tasks owns exactly one slot for the lifetime of the reduction, however many
+# OS threads or task migrations actually execute it.
+function energy_short_threaded(alpha::T, neighbor_list, charges) where T
+    n = length(neighbor_list)
+    nt = Threads.nthreads()
+    chunk_energy = zeros(T, nt)
+    Threads.@threads for t in 1:nt
+        lo = ((t - 1) * n) ÷ nt + 1
+        hi = (t * n) ÷ nt
+        local_E = zero(T)
+        @inbounds for k in lo:hi
+            i, j, r = neighbor_list[k]
+            @fastmath qi, qj = charges[i], charges[j]
+            @fastmath local_E += qi * qj * erfc(alpha * r) / r
+        end
+        chunk_energy[t] = local_E
+    end
+    return sum(chunk_energy)
+end
+
 """
-    energy_short(pme, poses, charges; neighbor_list = nothing, backend = CPU()) -> T
+    energy_short(pme, poses, charges; neighbor_list = nothing) -> T
 
 Real-space (short-range) part of the PME energy. `poses` is AoS; `charges` are
 plain reals. Neither is mutated.
@@ -92,7 +115,7 @@ Pass `neighbor_list` (a `CellListMap`-style list of `(i, j, r)` triples) to
 reuse a list already maintained elsewhere and skip rebuilding `pme`'s own
 cell list from `poses`.
 """
-function energy_short(pme::PME{T}, poses, charges; neighbor_list = nothing, backend = CPU()) where T
+function energy_short(pme::PME{T}, poses, charges; neighbor_list = nothing) where T
     @assert length(poses) == pme.N
     @assert length(charges) == pme.N
 
@@ -104,15 +127,10 @@ function energy_short(pme::PME{T}, poses, charges; neighbor_list = nothing, back
         nb = neighbor_list
     end
 
-    Es = zero(T)
-    if Threads.nthreads() == 1
-        Es = energy_short_single(pme.alpha, nb, charges)
+    Es = if Threads.nthreads() == 1 || length(nb) == 0
+        energy_short_single(pme.alpha, nb, charges)
     else
-        Es_thread = zeros(T, Threads.nthreads())
-        kernel = energy_short_kernel!(backend, Threads.nthreads(), size(nb, 1))
-        kernel(pme.alpha, nb, charges, Es_thread, ndrange = size(nb, 1))
-        KernelAbstractions.synchronize(backend)
-        Es = sum(Es_thread)
+        energy_short_threaded(pme.alpha, nb, charges)
     end
 
     t = pme.alpha / sqrt(T(π))
@@ -124,12 +142,12 @@ function energy_short(pme::PME{T}, poses, charges; neighbor_list = nothing, back
 end
 
 """
-    energy(pme, poses, charges; neighbor_list = nothing, backend = CPU()) -> T
+    energy(pme, poses, charges; neighbor_list = nothing) -> T
 
 Total PME energy (long + short range). See [`energy_long`](@ref) and
 [`energy_short`](@ref).
 """
-function energy(pme::PME{T}, poses, charges; neighbor_list = nothing, backend = CPU()) where T
+function energy(pme::PME{T}, poses, charges; neighbor_list = nothing) where T
     return energy_long(pme, poses, charges) +
-           energy_short(pme, poses, charges; neighbor_list = neighbor_list, backend = backend)
+           energy_short(pme, poses, charges; neighbor_list = neighbor_list)
 end
