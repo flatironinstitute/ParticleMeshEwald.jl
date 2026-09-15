@@ -6,29 +6,49 @@ authors = ["Xuanzhao Gao <xgao@flatironinstitute.org>"]
 [deps]
 CellListMap = "69e1c6dd-3888-40e6-b3c8-31ac5f578864"
 FINUFFT = "d8beea63-0952-562e-9c6a-8e8ef7364055"
-KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 SIMD = "fdea26ae-647d-5447-a871-4b548cad5224"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [weakdeps]
-EwaldSummations = "329efeb5-5dc7-45f3-8303-d0bcfeef1c8a"
 ExTinyMD = "fec76197-d59f-46dd-a0ed-76a83c21f7aa"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[extensions]
+ParticleMeshEwaldExTinyMDExt = "ExTinyMD"
+
+# ExTinyMD 0.3 is not yet published (General has only 0.2.7), so the test
+# target needs an override to resolve at all.
+#
+# This points at the git URL rather than a sibling path deliberately: a
+# {path = "../ExTinyMD.jl"} pin resolves locally but cannot work in CI, where
+# only this repository is checked out and actions/checkout will not write
+# outside the workspace. Verified: with a path pin, `Pkg.test()` fails with
+# `expected package ExTinyMD [fec76197] to exist at path .../ExTinyMD.jl`.
+#
+# NOTE: General's automerge rejects any Project.toml containing [sources], so
+# this package cannot be registered while this block is present. Its removal
+# is gated on ExTinyMD 0.3 reaching the registry and is tracked for all five
+# downstream packages together in
+# ExTinyMD.jl/docs/superpowers/specs/2026-09-15-downstream-decoupling-design.md §6b.
+[sources]
+ExTinyMD = {url = "https://github.com/HPMolSim/ExTinyMD.jl", rev = "main"}
 
 [compat]
-CellListMap = "0.9.14"
+CellListMap = "0.10"
+ExTinyMD = "0.3"
 FINUFFT = "3.4.2"
-KernelAbstractions = "0.9.39"
-LinearAlgebra = "1.12.0"
+LinearAlgebra = "1"
 LoopVectorization = "0.12.173"
 SIMD = "3.7.2"
 SpecialFunctions = "2.6.1"
-julia = "1.10, 1.11, 1.12"
+julia = "1.10"
 
 [extras]
+ExTinyMD = "fec76197-d59f-46dd-a0ed-76a83c21f7aa"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "EwaldSummations", "ExTinyMD", "Random"]
+test = ["Test", "ExTinyMD", "Random", "StaticArrays"]

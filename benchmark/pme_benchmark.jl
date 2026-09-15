@@ -5,14 +5,12 @@ using Random
 
 function benchmark_pme(n_atoms, L, alpha, s)
     pme = PME(alpha, (L, L, L), s, n_atoms)
-    x = rand(n_atoms) .* L
-    y = rand(n_atoms) .* L
-    z = rand(n_atoms) .* L
-    q = rand(ComplexF64, n_atoms)
+    poses = [(rand() * L, rand() * L, rand() * L) for _ in 1:n_atoms]
+    charges = rand(n_atoms)
 
-    t_short = @belapsed ParticleMeshEwald.energy_short($(pme), $(x), $(y), $(z), $(q))
-    t_long = @belapsed ParticleMeshEwald.energy_long($(pme), $(x), $(y), $(z), $(q))
-    t_total = @belapsed ParticleMeshEwald.energy($(pme), $(x), $(y), $(z), $(q))
+    t_short = @belapsed ParticleMeshEwald.energy_short($(pme), $(poses), $(charges))
+    t_long = @belapsed ParticleMeshEwald.energy_long($(pme), $(poses), $(charges))
+    t_total = @belapsed ParticleMeshEwald.energy($(pme), $(poses), $(charges))
 
     return t_short, t_long, t_total
 end
