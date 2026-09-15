@@ -18,17 +18,17 @@ ExTinyMD = "fec76197-d59f-46dd-a0ed-76a83c21f7aa"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
-CellListMap = "0.9.14"
+CellListMap = "0.10"
 FINUFFT = "3.4.2"
 KernelAbstractions = "0.9.39"
-LinearAlgebra = "1.12.0"
+LinearAlgebra = "1"
 LoopVectorization = "0.12.173"
 SIMD = "3.7.2"
 SpecialFunctions = "2.6.1"
-julia = "1.10, 1.11, 1.12"
+julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "EwaldSummations", "ExTinyMD", "Random"]
+test = ["Test", "Random"]

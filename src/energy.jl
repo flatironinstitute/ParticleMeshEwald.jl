@@ -49,7 +49,7 @@ function energy_short(pme::PME, x::Vector{T}, y::Vector{T}, z::Vector{T}, q::Vec
         pme.pos[3, i] = z[i]
     end
 
-    update!(pme.celllist, pme.pos)
+    update!(pme.celllist, xpositions=pme.pos)
     nb = neighborlist!(pme.celllist)
 
     Es = zero(T)

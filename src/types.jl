@@ -42,7 +42,7 @@ mutable struct PME{T, TP, TD, TR, TC}
         plan = finufft_makeplan(1, [2 * n_k[1] + 1, 2 * n_k[2] + 1, 2 * n_k[3] + 1], +1, 1, eps, dtype=T)
 
         pos = zeros(T, 3, N);
-        celllist = InPlaceNeighborList(x=pos, cutoff=r_c, unitcell=[L[1], L[2], L[3]], parallel=true)
+        celllist = InPlaceNeighborList(xpositions=pos, cutoff=r_c, unitcell=[L[1], L[2], L[3]], parallel=true)
 
         new{T, typeof(plan), typeof(D), typeof(rho), typeof(celllist)}(alpha, L, s, N, eps, r_c, k_c, plan, n_k, D, rho, pos, celllist)
     end
