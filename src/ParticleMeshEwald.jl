@@ -7,7 +7,8 @@ using KernelAbstractions
 include(joinpath(dirname(pathof(KernelAbstractions)), "../examples/utils.jl"))
 
 export PME
-export energy_short, energy_long, energy
+# energy/energy_short/energy_long are deliberately NOT exported: callers write
+# ParticleMeshEwald.energy(...). See README.
 
 # include("horner.jl")
 

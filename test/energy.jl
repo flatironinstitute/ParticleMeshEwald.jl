@@ -48,6 +48,35 @@
     @test norm(rho_n .- rho_direct) < 1e-7
 end
 
+@testset "AoS query API" begin
+    Random.seed!(2026)
+    n = 100
+    L = (20.0, 20.0, 20.0)
+    α, s = 0.5, 4.0            # r_c = s/α = 8.0 < min(L)/2 = 10.0
+    poses = [SVector(rand() * L[1], rand() * L[2], rand() * L[3]) for _ in 1:n]
+    charges = [isodd(i) ? 1.0 : -1.0 for i in 1:n]
+
+    pme = PME(α, L, s, n)
+    E = ParticleMeshEwald.energy(pme, poses, charges)
+    @test isfinite(E)
+
+    # the same positions as NTuple and as a 3-column read must agree
+    @test ParticleMeshEwald.energy(pme, [Tuple(p) for p in poses], charges) ≈ E
+end
+
+@testset "energy does not mutate the caller's positions" begin
+    Random.seed!(7)
+    n = 50
+    L = (20.0, 20.0, 20.0)
+    poses = [SVector(rand() * L[1], rand() * L[2], rand() * L[3]) for _ in 1:n]
+    charges = [isodd(i) ? 1.0 : -1.0 for i in 1:n]
+    before = deepcopy(poses)
+
+    pme = PME(0.5, L, 4.0, n)      # r_c = 8.0 < min(L)/2 = 10.0
+    ParticleMeshEwald.energy(pme, poses, charges)
+    @test poses == before
+end
+
 @testset "regression: baseline energies recorded pre-CellListMap-0.10 (Task 1)" begin
     # These reference values were captured by running this exact loop (fixed seed,
     # PME-only, no other package touching the global RNG) against the pre-Task-1
@@ -96,9 +125,14 @@ end
         q0 = rand(n_atoms);
         q0 .-= sum(q0) / n_atoms;
 
-        q = ComplexF64.(q0)
-        E_pme_short = ParticleMeshEwald.energy_short(p, x, y, z, q)
-        E_pme_long = ParticleMeshEwald.energy_long(p, x, y, z, q)
+        # These reference values were recorded against the SoA API (energy_short/
+        # energy_long taking x, y, z, ComplexF64.(q) separately); Task 2 replaced that
+        # API with the AoS form exercised here, so the draws above are converted to
+        # poses/charges rather than reshaping the recorded test. The physics -- and
+        # therefore the recorded numbers -- do not change between the two call shapes.
+        poses = [SVector(x[i], y[i], z[i]) for i in 1:n_atoms]
+        E_pme_short = ParticleMeshEwald.energy_short(p, poses, q0)
+        E_pme_long = ParticleMeshEwald.energy_long(p, poses, q0)
         E_pme = E_pme_short + E_pme_long
 
         @test E_pme ≈ baseline_energy[(Lx, Ly, Lz)] atol=1e-8

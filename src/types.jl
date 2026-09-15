@@ -16,6 +16,16 @@ mutable struct PME{T, TP, TD, TR, TC}
     pos::Matrix{T}
     celllist::TC
 
+    # Plan-owned scratch for the AoS query API: queries scatter the caller's
+    # `poses`/`charges` into these buffers instead of mutating the caller's
+    # arrays or allocating on every call. `xs`/`ys`/`zs` hold the 2π/L-scaled
+    # coordinates FINUFFT needs; `qs` holds the charges promoted to Complex{T},
+    # the internal representation FINUFFT requires.
+    xs::Vector{T}
+    ys::Vector{T}
+    zs::Vector{T}
+    qs::Vector{Complex{T}}
+
     function PME(alpha::T, L::NTuple{3, T}, s::T, N::Int) where T
         eps = exp(-s^2) / s^2
         r_c = s / alpha
@@ -44,6 +54,11 @@ mutable struct PME{T, TP, TD, TR, TC}
         pos = zeros(T, 3, N);
         celllist = InPlaceNeighborList(xpositions=pos, cutoff=r_c, unitcell=[L[1], L[2], L[3]], parallel=true)
 
-        new{T, typeof(plan), typeof(D), typeof(rho), typeof(celllist)}(alpha, L, s, N, eps, r_c, k_c, plan, n_k, D, rho, pos, celllist)
+        xs = zeros(T, N)
+        ys = zeros(T, N)
+        zs = zeros(T, N)
+        qs = zeros(Complex{T}, N)
+
+        new{T, typeof(plan), typeof(D), typeof(rho), typeof(celllist)}(alpha, L, s, N, eps, r_c, k_c, plan, n_k, D, rho, pos, celllist, xs, ys, zs, qs)
     end
 end
