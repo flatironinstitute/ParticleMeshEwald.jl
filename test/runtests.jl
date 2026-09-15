@@ -12,5 +12,6 @@ using ExTinyMD
 
 @testset "ParticleMeshEwald.jl" begin
     include("energy.jl")
+    include("standalone.jl")
     include("extinymd_adapter.jl")
 end
