@@ -12,12 +12,21 @@ SIMD = "fdea26ae-647d-5447-a871-4b548cad5224"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [weakdeps]
-EwaldSummations = "329efeb5-5dc7-45f3-8303-d0bcfeef1c8a"
 ExTinyMD = "fec76197-d59f-46dd-a0ed-76a83c21f7aa"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[extensions]
+ParticleMeshEwaldExTinyMDExt = "ExTinyMD"
+
+# ExTinyMD 0.3 is not yet published (General has only 0.2.7); this repo and
+# ExTinyMD.jl are developed side by side as sibling checkouts. Remove this
+# [sources] override once ExTinyMD 0.3 lands in the registry -- compat above
+# will then resolve it normally and this local-path pin becomes unnecessary.
+[sources]
+ExTinyMD = {path = "../ExTinyMD.jl"}
 
 [compat]
 CellListMap = "0.10"
+ExTinyMD = "0.3"
 FINUFFT = "3.4.2"
 LinearAlgebra = "1"
 LoopVectorization = "0.12.173"
@@ -26,8 +35,10 @@ SpecialFunctions = "2.6.1"
 julia = "1.10"
 
 [extras]
+ExTinyMD = "fec76197-d59f-46dd-a0ed-76a83c21f7aa"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "StaticArrays"]
+test = ["Test", "ExTinyMD", "Random", "StaticArrays"]
