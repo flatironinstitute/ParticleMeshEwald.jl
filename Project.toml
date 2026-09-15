@@ -17,12 +17,22 @@ ExTinyMD = "fec76197-d59f-46dd-a0ed-76a83c21f7aa"
 [extensions]
 ParticleMeshEwaldExTinyMDExt = "ExTinyMD"
 
-# ExTinyMD 0.3 is not yet published (General has only 0.2.7); this repo and
-# ExTinyMD.jl are developed side by side as sibling checkouts. Remove this
-# [sources] override once ExTinyMD 0.3 lands in the registry -- compat above
-# will then resolve it normally and this local-path pin becomes unnecessary.
+# ExTinyMD 0.3 is not yet published (General has only 0.2.7), so the test
+# target needs an override to resolve at all.
+#
+# This points at the git URL rather than a sibling path deliberately: a
+# {path = "../ExTinyMD.jl"} pin resolves locally but cannot work in CI, where
+# only this repository is checked out and actions/checkout will not write
+# outside the workspace. Verified: with a path pin, `Pkg.test()` fails with
+# `expected package ExTinyMD [fec76197] to exist at path .../ExTinyMD.jl`.
+#
+# NOTE: General's automerge rejects any Project.toml containing [sources], so
+# this package cannot be registered while this block is present. Its removal
+# is gated on ExTinyMD 0.3 reaching the registry and is tracked for all five
+# downstream packages together in
+# ExTinyMD.jl/docs/superpowers/specs/2026-09-15-downstream-decoupling-design.md §6b.
 [sources]
-ExTinyMD = {path = "../ExTinyMD.jl"}
+ExTinyMD = {url = "https://github.com/HPMolSim/ExTinyMD.jl", rev = "main"}
 
 [compat]
 CellListMap = "0.10"
